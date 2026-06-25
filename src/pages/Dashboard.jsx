@@ -9,12 +9,12 @@ import {
   PAYBOX_URL,
   MOCK_SESSIONS,
   MOCK_STUDENTS,
-  MOCK_CURRENT_STUDENT,
 } from '../lib/constants';
 
 function CreditsCard({ student }) {
   const total = 4; // credits per pack
   const used  = total - student.credits;
+  const [showOptions, setShowOptions] = useState(false);
 
   return (
     <div style={{
@@ -50,21 +50,49 @@ function CreditsCard({ student }) {
         ))}
       </div>
 
-      <Btn
-        variant="primary"
-        size="md"
-        fullWidth
-        onClick={() => window.open(PAYBOX_URL, '_blank')}
-      >
-        טעינת כניסות — ₪{PRICES.pack4} ל-4
-      </Btn>
+      {!showOptions ? (
+        <Btn
+          variant="primary"
+          size="md"
+          fullWidth
+          onClick={() => setShowOptions(true)}
+        >
+          טעינת כניסות
+        </Btn>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+          <Btn
+            variant="primary"
+            size="md"
+            fullWidth
+            onClick={() => window.open(PAYBOX_URL, '_blank')}
+          >
+            כרטיסיית 4 כניסות — ₪{PRICES.pack4}
+          </Btn>
+          <Btn
+            variant="outline"
+            size="md"
+            fullWidth
+            onClick={() => window.open(PAYBOX_URL, '_blank')}
+          >
+            כניסה בודדת — ₪{PRICES.single}
+          </Btn>
+          <Btn
+            variant="ghost"
+            size="sm"
+            fullWidth
+            onClick={() => setShowOptions(false)}
+          >
+            ביטול
+          </Btn>
+        </div>
+      )}
     </div>
   );
 }
 
-function SessionCard({ session, isBooked, onBook, currentStudentId }) {
+function SessionCard({ session, isRegistered, onToggle }) {
   const participants = MOCK_STUDENTS.filter(s => session.registeredIds.includes(s.id));
-  const alreadyIn    = session.registeredIds.includes(currentStudentId);
 
   return (
     <div style={{
@@ -77,20 +105,25 @@ function SessionCard({ session, isBooked, onBook, currentStudentId }) {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
 
         {/* Status pill / register button */}
-        {alreadyIn || isBooked ? (
-          <div style={{
-            display:'flex', alignItems:'center', gap:6,
-            background:'rgba(134,239,172,0.1)',
-            padding:'5px 12px', borderRadius:20,
-            border:'1px solid rgba(134,239,172,0.2)',
-          }}>
+        {isRegistered ? (
+          <button
+            onClick={onToggle}
+            title="לביטול ההרשמה"
+            style={{
+              display:'flex', alignItems:'center', gap:6,
+              background:'rgba(134,239,172,0.1)',
+              padding:'5px 12px', borderRadius:20,
+              border:'1px solid rgba(134,239,172,0.2)',
+              cursor:'pointer',
+            }}
+          >
             <svg width="9" height="9" viewBox="0 0 9 9">
               <circle cx="4.5" cy="4.5" r="4.5" fill={COLORS.green}/>
             </svg>
             <span style={{ fontSize:11, fontWeight:700, color:COLORS.green }}>רשומה</span>
-          </div>
+          </button>
         ) : (
-          <Btn variant="outline" size="sm" onClick={onBook}>
+          <Btn variant="outline" size="sm" onClick={onToggle}>
             הרשמה <span style={{ fontSize:14, lineHeight:1 }}>+</span>
           </Btn>
         )}
@@ -100,7 +133,7 @@ function SessionCard({ session, isBooked, onBook, currentStudentId }) {
           <div style={{ fontSize:14, fontWeight:600, color:'#bbb' }}>{session.label}</div>
           <div style={{
             fontSize:26, fontWeight:900, lineHeight:1.1, letterSpacing:'-0.5px',
-            color: alreadyIn || isBooked ? COLORS.primary : '#888',
+            color: isRegistered ? COLORS.primary : '#888',
           }}>
             {FIXED_CLASS.time}
           </div>
@@ -116,11 +149,16 @@ function SessionCard({ session, isBooked, onBook, currentStudentId }) {
   );
 }
 
-export function Dashboard({ onBack }) {
-  const student = MOCK_CURRENT_STUDENT;
-  const [booked, setBooked] = useState({});
+export function Dashboard({ student, onBack }) {
+  const [registered, setRegistered] = useState(() => {
+    const initial = {};
+    MOCK_SESSIONS.forEach(s => {
+      initial[s.id] = s.registeredIds.includes(student.id);
+    });
+    return initial;
+  });
 
-  const toggle = (id) => setBooked(b => ({ ...b, [id]: !b[id] }));
+  const toggle = (id) => setRegistered(r => ({ ...r, [id]: !r[id] }));
 
   return (
     <div className="fade-up">
@@ -177,9 +215,8 @@ export function Dashboard({ onBack }) {
         <SessionCard
           key={s.id}
           session={s}
-          isBooked={!!booked[s.id]}
-          onBook={() => toggle(s.id)}
-          currentStudentId={student.id}
+          isRegistered={!!registered[s.id]}
+          onToggle={() => toggle(s.id)}
         />
       ))}
 

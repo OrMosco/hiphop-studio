@@ -18,6 +18,9 @@ export const COLORS = {
   textFaint:   '#555555',
 };
 
+// ─── Admin access (quick gate, not real auth) ─────────────────────────────────
+export const ADMIN_PASSWORD = 'ברעומר';
+
 // ─── PayBox ───────────────────────────────────────────────────────────────────
 export const PAYBOX_URL = 'https://payboxapp.page.link/YOUR_ID'; // החלף ב-ID של נטעלי
 

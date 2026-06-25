@@ -4,7 +4,7 @@ import { AvatarStack } from '../components/Avatar';
 import { StatusBar }  from '../components/StatusBar';
 import { COLORS, FIXED_CLASS, PRICES, MOCK_SESSIONS, MOCK_STUDENTS } from '../lib/constants';
 
-export function Home({ onEnter }) {
+export function Home({ onEnter, onAdmin }) {
   const [showDetails, setShowDetails] = useState(false);
 
   const nextSession  = MOCK_SESSIONS[0];
@@ -17,7 +17,7 @@ export function Home({ onEnter }) {
       {/* ── Nav ── */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 28px 24px' }}>
         <button
-          onClick={() => { /* TODO: navigate to admin (hidden) */ }}
+          onClick={onAdmin}
           style={{ background:'none', border:'none', cursor:'pointer', color:'#333', fontSize:19, padding:4, lineHeight:1 }}
         >
           ⚙
