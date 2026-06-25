@@ -1,40 +1,63 @@
-// components/Btn.jsx
-import { grad } from '../lib/constants'
+import { COLORS } from '../lib/constants';
 
-const styles = (variant, full, disabled) => {
-  const base = {
-    fontFamily: 'inherit',
-    fontWeight: 700,
-    fontSize: 15,
+const VARIANTS = {
+  primary: {
+    background: COLORS.primary,
+    color: COLORS.bg,
     border: 'none',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    padding: '14px 28px',
-    borderRadius: 3,
-    transition: 'transform .12s ease, opacity .12s',
-    width: full ? '100%' : 'auto',
-    opacity: disabled ? 0.4 : 1,
-  }
-  const map = {
-    solid: { ...base, background: grad, color: '#031018' },
-    ghost: { ...base, background: 'transparent', color: '#fff', border: '1px solid #2a313b' },
-    dark:  { ...base, background: '#15191f', color: '#fff' },
-    green: { ...base, background: '#16331f', color: '#5BE584', border: '1px solid #1f5132' },
-  }
-  return map[variant] || map.solid
-}
+  },
+  secondary: {
+    background: 'transparent',
+    color: COLORS.textMuted,
+    border: `1.5px solid ${COLORS.border}`,
+  },
+  outline: {
+    background: `rgba(232,255,0,0.08)`,
+    color: COLORS.primary,
+    border: `1px solid rgba(232,255,0,0.25)`,
+  },
+  ghost: {
+    background: 'none',
+    color: COLORS.textMuted,
+    border: 'none',
+  },
+};
 
-export default function Btn({ children, onClick, variant = 'solid', full, disabled, small }) {
-  const s = styles(variant, full, disabled)
-  if (small) { s.fontSize = 13; s.padding = '8px 14px' }
+const SIZES = {
+  sm: { fontSize: 11, padding: '5px 12px', borderRadius: 20 },
+  md: { fontSize: 15, padding: '15px 24px', borderRadius: 15 },
+  lg: { fontSize: 17, padding: '17px 24px', borderRadius: 15 },
+};
+
+/**
+ * @param {'primary'|'secondary'|'outline'|'ghost'} variant
+ * @param {'sm'|'md'|'lg'} size
+ * @param {boolean} fullWidth
+ */
+export function Btn({ variant = 'primary', size = 'md', fullWidth = false, children, style, ...props }) {
+  const v = VARIANTS[variant] ?? VARIANTS.primary;
+  const s = SIZES[size] ?? SIZES.md;
+
   return (
     <button
-      style={s}
-      onClick={disabled ? undefined : onClick}
-      onMouseDown={(e) => !disabled && (e.currentTarget.style.transform = 'scale(0.97)')}
-      onMouseUp={(e)   => (e.currentTarget.style.transform = 'scale(1)')}
-      onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        width: fullWidth ? '100%' : undefined,
+        fontWeight: 700,
+        letterSpacing: '0.2px',
+        transition: 'opacity 0.15s',
+        ...v,
+        ...s,
+        ...style,
+      }}
+      onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+      {...props}
     >
       {children}
     </button>
-  )
+  );
 }

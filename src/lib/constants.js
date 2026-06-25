@@ -1,55 +1,65 @@
-// lib/constants.js
-// -----------------------------------------------------------
-// כל הקבועים המרכזיים במקום אחד
-// -----------------------------------------------------------
+// ─── Design Tokens ────────────────────────────────────────────────────────────
+export const COLORS = {
+  bg:        '#0d0d0d',
+  card:      '#141414',
+  cardHover: '#1a1a1a',
+  elevated:  '#1e1e1e',
+  border:    '#242424',
+  borderAlt: '#2a2a2a',
+  primary:   '#e8ff00',   // yellow-green accent
+  secondary: '#ff4d80',   // pink accent
+  green:     '#86efac',
+  blue:      '#7dd3fc',
+  yellow:    '#fbbf24',
+  purple:    '#c084fc',
+  textPrimary: '#f5f5f5',
+  textMuted:   '#888888',
+  textDim:     '#666666',
+  textFaint:   '#555555',
+};
 
-// PayBox — תחליפי ב-ID האמיתי של נטעלי
-export const PAYBOX_LINK = 'https://link.payboxapp.com/pay/YOUR_ID'
+// ─── PayBox ───────────────────────────────────────────────────────────────────
+export const PAYBOX_URL = 'https://payboxapp.page.link/YOUR_ID'; // החלף ב-ID של נטעלי
 
-// עיצוב
-export const grad   = 'linear-gradient(95deg,#22D3EE,#3B82F6)'
-export const BLUE   = '#3B82F6'
-export const BLUE2  = '#22D3EE'
-export const AV_COLORS = ['#3B82F6','#22D3EE','#6366F1','#0EA5E9','#8B5CF6','#14B8A6']
-
-// השיעור הקבוע
+// ─── Fixed class ─────────────────────────────────────────────────────────────
 export const FIXED_CLASS = {
-  day:   'ראשון',
-  time:  '20:00',
-  coach: 'נטעלי',
+  day:      'ראשון',
+  time:     '20:00',
+  teacher:  'נטעלי',
   location: 'קיבוץ אפק',
-}
+};
 
-// -----------------------------------------------------------
-// נתוני דמה — ימחקו כשמחברים Supabase
-// -----------------------------------------------------------
-export const MOCK_STUDENT = {
-  id: 99,
-  name: 'נועה',
-  phone: '050-1234567',
-  credits: 3,
-}
+// ─── Pricing ─────────────────────────────────────────────────────────────────
+export const PRICES = {
+  single: 65,
+  pack4:  210,
+};
 
-export const MOCK_UPCOMING = [
-  { id: 'sun-1', date: '23.06', label: 'ראשון הקרוב', attendees: ['שיר','תמר','רוני','מאיה','ליה'] },
-  { id: 'sun-2', date: '30.06', label: '',             attendees: ['דנה','יעל','תמר'] },
-  { id: 'sun-3', date: '07.07', label: '',             attendees: ['רוני'] },
-  { id: 'sun-4', date: '14.07', label: '',             attendees: [] },
-]
+// ─── Avatar palette (cycles by index) ────────────────────────────────────────
+export const AVATAR_COLORS = [
+  { bg: COLORS.secondary, text: '#fff'    },
+  { bg: COLORS.primary,   text: '#0d0d0d' },
+  { bg: COLORS.blue,      text: '#0d0d0d' },
+  { bg: COLORS.green,     text: '#0d0d0d' },
+  { bg: COLORS.yellow,    text: '#0d0d0d' },
+  { bg: COLORS.purple,    text: '#fff'    },
+];
 
+// ─── Mock data (replace with Supabase queries) ────────────────────────────────
 export const MOCK_STUDENTS = [
-  { id: 1, name: 'שיר לוי',   phone: '050-1112233', credits: 2 },
-  { id: 2, name: 'תמר כהן',   phone: '052-4455667', credits: 4 },
-  { id: 3, name: 'רוני אבני', phone: '054-7788990', credits: 0 },
-  { id: 4, name: 'מאיה גל',   phone: '053-1239876', credits: 1 },
-  { id: 5, name: 'ליה שדה',   phone: '058-6543210', credits: 3 },
-  { id: 6, name: 'דנה פז',    phone: '050-9871234', credits: 2 },
-  { id: 7, name: 'יעל מור',   phone: '052-3456789', credits: 4 },
-]
+  { id: '1', name: 'נועה',   phone: '050-0000001', credits: 3 },
+  { id: '2', name: 'מיה',    phone: '050-0000002', credits: 4 },
+  { id: '3', name: 'שירה',   phone: '050-0000003', credits: 1 },
+  { id: '4', name: 'רוני',   phone: '050-0000004', credits: 2 },
+  { id: '5', name: 'דנה',    phone: '050-0000005', credits: 4 },
+  { id: '6', name: 'תמר',    phone: '050-0000006', credits: 0 },
+];
 
 export const MOCK_SESSIONS = [
-  { id: 'sun-1', date: '23.06', label: 'ראשון הקרוב', registered: [1,2,4,5,6], present: [] },
-  { id: 'sun-2', date: '30.06', label: '',             registered: [2,7,5],     present: [] },
-  { id: 'sun-3', date: '07.07', label: '',             registered: [1],         present: [] },
-  { id: 'sun-4', date: '14.07', label: '',             registered: [],          present: [] },
-]
+  { id: 's1', date: '2025-06-29', label: 'ראשון, 29 ביוני', registeredIds: ['1','2','3','4','5','6','7','8'] },
+  { id: 's2', date: '2025-07-06', label: 'ראשון, 6 ביולי',  registeredIds: ['2','4','5','6','7'] },
+  { id: 's3', date: '2025-07-13', label: 'ראשון, 13 ביולי', registeredIds: ['3','6','7'] },
+];
+
+// Current logged-in student (mock — replace with Supabase auth)
+export const MOCK_CURRENT_STUDENT = MOCK_STUDENTS[0];
