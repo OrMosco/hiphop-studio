@@ -1,27 +1,38 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Btn }       from '../components/Btn';
 import { AvatarStack } from '../components/Avatar';
-import { StatusBar }  from '../components/StatusBar';
-import { COLORS, FIXED_CLASS, PRICES, MOCK_SESSIONS, MOCK_STUDENTS } from '../lib/constants';
+import { COLORS, FIXED_CLASS, PRICES } from '../lib/constants';
+import { fetchUpcomingSessions, sessionLabel, sessionTime } from '../lib/api';
+import { useAuth } from '../lib/auth';
 
-export function Home({ onEnter, onAdmin }) {
+export function Home() {
+  const navigate = useNavigate();
+  const { user, isAdmin } = useAuth();
   const [showDetails, setShowDetails] = useState(false);
+  const [nextSession, setNext] = useState(undefined); // undefined = loading, null = none
 
-  const nextSession  = MOCK_SESSIONS[0];
-  const participants = MOCK_STUDENTS.filter(s => nextSession.registeredIds.includes(s.id));
+  useEffect(() => {
+    // next session = first one that hasn't started yet
+    fetchUpcomingSessions({ limit: 3 })
+      .then(list => setNext(list.find(s => new Date(s.starts_at) > new Date()) ?? null))
+      .catch(err => { console.error(err); setNext(null); });
+  }, []);
+
+  const participants = nextSession?.participants ?? [];
+  const onEnter = () => navigate(user ? '/dashboard' : '/login');
 
   return (
     <div className="fade-up">
-      <StatusBar />
 
       {/* ── Nav ── */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 28px 24px' }}>
-        <button
-          onClick={onAdmin}
+        {isAdmin ? <button
+          onClick={() => navigate('/admin')}
           style={{ background:'none', border:'none', cursor:'pointer', color:'#333', fontSize:19, padding:4, lineHeight:1 }}
         >
           ⚙
-        </button>
+        </button> : <span />}
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <span style={{ fontSize:14, fontWeight:600, color:'#888', letterSpacing:'0.3px' }}>אפק</span>
           <div style={{ background:COLORS.primary, color:COLORS.bg, fontSize:12, fontWeight:900, padding:'5px 11px', borderRadius:7, letterSpacing:'0.8px' }}>
@@ -70,8 +81,8 @@ export function Home({ onEnter, onAdmin }) {
 
         {/* Date & time */}
         <div style={{ textAlign:'right', marginBottom:18 }}>
-          <div style={{ fontSize:16, fontWeight:600, color:'#bbb', marginBottom:4 }}>{nextSession.label}</div>
-          <div style={{ fontSize:48, fontWeight:900, color:COLORS.primary, lineHeight:1, letterSpacing:'-1px' }}>{FIXED_CLASS.time}</div>
+          <div style={{ fontSize:16, fontWeight:600, color:'#bbb', marginBottom:4 }}>{nextSession ? sessionLabel(nextSession.starts_at) : nextSession === null ? 'אין שיעור מתוכנן' : 'טוען…'}</div>
+          <div style={{ fontSize:48, fontWeight:900, color:COLORS.primary, lineHeight:1, letterSpacing:'-1px' }}>{nextSession ? sessionTime(nextSession.starts_at) : FIXED_CLASS.time}</div>
         </div>
 
         {/* Location + avatars */}
@@ -79,11 +90,11 @@ export function Home({ onEnter, onAdmin }) {
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <AvatarStack students={participants} max={5} size={28} cardBg={COLORS.card} />
             <span style={{ fontSize:12, color:'#666', marginRight:4 }}>
-              {nextSession.registeredIds.length > 5 ? `+${nextSession.registeredIds.length - 5}` : ''}
+              {participants.length > 5 ? `+${participants.length - 5}` : ''}
             </span>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-            <span style={{ fontSize:13, fontWeight:600, color:'#666' }}>{FIXED_CLASS.location}</span>
+            <span style={{ fontSize:13, fontWeight:600, color:'#666' }}>{nextSession?.location ?? FIXED_CLASS.location}</span>
             <svg width="13" height="16" viewBox="0 0 13 16" fill="none">
               <path d="M6.5 0C3.46 0 1 2.46 1 5.5C1 9.63 6.5 16 6.5 16C6.5 16 12 9.63 12 5.5C12 2.46 9.54 0 6.5 0ZM6.5 7.5C5.4 7.5 4.5 6.6 4.5 5.5C4.5 4.4 5.4 3.5 6.5 3.5C7.6 3.5 8.5 4.4 8.5 5.5C8.5 6.6 7.6 7.5 6.5 7.5Z" fill="#666"/>
             </svg>
@@ -94,7 +105,7 @@ export function Home({ onEnter, onAdmin }) {
       {/* ── CTA Buttons ── */}
       <div style={{ padding:'0 20px', display:'flex', flexDirection:'column', gap:11 }}>
         <Btn variant="primary" size="lg" fullWidth onClick={onEnter}>
-          כניסת תלמידות
+          {user ? 'לוח הבקרה שלי' : 'כניסת תלמידות'}
         </Btn>
         <Btn variant="secondary" size="md" fullWidth onClick={() => setShowDetails(d => !d)}>
           {showDetails ? 'סגור פרטים ↑' : 'פרטים על השיעור'}

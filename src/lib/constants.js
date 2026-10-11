@@ -18,9 +18,6 @@ export const COLORS = {
   textFaint:   '#555555',
 };
 
-// ─── Admin access (quick gate, not real auth) ─────────────────────────────────
-export const ADMIN_PASSWORD = 'ברעומר';
-
 // ─── PayBox ───────────────────────────────────────────────────────────────────
 export const PAYBOX_URL = 'https://payboxapp.page.link/YOUR_ID'; // החלף ב-ID של נטעלי
 
@@ -48,21 +45,9 @@ export const AVATAR_COLORS = [
   { bg: COLORS.purple,    text: '#fff'    },
 ];
 
-// ─── Mock data (replace with Supabase queries) ────────────────────────────────
-export const MOCK_STUDENTS = [
-  { id: '1', name: 'נועה',   phone: '050-0000001', credits: 3 },
-  { id: '2', name: 'מיה',    phone: '050-0000002', credits: 4 },
-  { id: '3', name: 'שירה',   phone: '050-0000003', credits: 1 },
-  { id: '4', name: 'רוני',   phone: '050-0000004', credits: 2 },
-  { id: '5', name: 'דנה',    phone: '050-0000005', credits: 4 },
-  { id: '6', name: 'תמר',    phone: '050-0000006', credits: 0 },
-];
+// Credits sold per pack (used for the credits card progress dots)
+export const PACK_SIZE = 4;
 
-export const MOCK_SESSIONS = [
-  { id: 's1', date: '2025-06-29', label: 'ראשון, 29 ביוני', registeredIds: ['1','2','3','4','5','6','7','8'] },
-  { id: 's2', date: '2025-07-06', label: 'ראשון, 6 ביולי',  registeredIds: ['2','4','5','6','7'] },
-  { id: 's3', date: '2025-07-13', label: 'ראשון, 13 ביולי', registeredIds: ['3','6','7'] },
-];
-
-// Current logged-in student (mock — replace with Supabase auth)
-export const MOCK_CURRENT_STUDENT = MOCK_STUDENTS[0];
+// Stable palette index for a uuid / string id
+export const colorIndex = (id = '') =>
+  [...String(id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 0);

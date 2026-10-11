@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { Btn } from '../components/Btn';
-import { COLORS, MOCK_STUDENTS, MOCK_SESSIONS } from '../lib/constants';
+import { BackButton } from '../components/BackButton';
+import { COLORS, PACK_SIZE, colorIndex } from '../lib/constants';
+import { fetchAdminSessions, fetchStudents, adjustCredits, setAttendance, sessionLabel, sessionTime } from '../lib/api';
+import { useAuth } from '../lib/auth';
 
 function Stat({ label, value, accent, warn }) {
   return (
@@ -20,32 +23,39 @@ function Stat({ label, value, accent, warn }) {
   );
 }
 
-export function Admin({ onBack }) {
+export function Admin() {
+  const { profile, refreshProfile } = useAuth();
   const [tab, setTab]           = useState('sessions');
-  const [students, setStudents] = useState(MOCK_STUDENTS);
-  const [present, setPresent]   = useState({}); // { [sessionId]: string[] of studentIds }
-  const [openSession, setOpen]  = useState(MOCK_SESSIONS[0]?.id ?? null);
+  const [students, setStudents] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [openSession, setOpen]  = useState(null);
+  const [busy, setBusy]         = useState(null);
+  const [error, setError]       = useState(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [st, ss] = await Promise.all([fetchStudents(), fetchAdminSessions()]);
+      setStudents(st); setSessions(ss);
+      setOpen(o => o ?? (ss.find(x => new Date(x.starts_at) > new Date()) ?? ss[ss.length - 1])?.id ?? null);
+    } catch (e) { setError(e.message); }
+  }, []);
+  useEffect(() => { load(); }, [load]);
 
   const byId = (id) => students.find(s => s.id === id);
+  const name = (st) => st?.full_name || st?.email || '?';
 
-  const togglePresent = (sessionId, studentId) => {
-    setPresent(prev => {
-      const current  = prev[sessionId] ?? [];
-      const isThere   = current.includes(studentId);
-      const nextList  = isThere ? current.filter(id => id !== studentId) : [...current, studentId];
-
-      setStudents(sts => sts.map(st =>
-        st.id === studentId
-          ? { ...st, credits: isThere ? st.credits + 1 : Math.max(0, st.credits - 1) }
-          : st
-      ));
-
-      return { ...prev, [sessionId]: nextList };
-    });
+  const run = async (key, fn) => {
+    setBusy(key); setError(null);
+    try { await fn(); await load(); if (key.includes(profile.id)) refreshProfile(); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(null); }
   };
-
+  const togglePresent = (sessionId, studentId, isPresent) =>
+    run(`att:${sessionId}:${studentId}`, () => setAttendance(sessionId, studentId, !isPresent));
   const addCredits = (studentId, n) =>
-    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, credits: Math.max(0, s.credits + n) } : s));
+    run(`cr:${studentId}`, () => adjustCredits(studentId, n, n > 0 ? 'purchase' : 'adjustment'));
+
+  const nextSession = sessions.find(x => new Date(x.starts_at) > new Date());
 
   return (
     <div dir="rtl" style={{ minHeight: '100vh', background: COLORS.bg, color: '#fff', fontFamily: "'Heebo', system-ui, sans-serif" }}>
@@ -56,24 +66,13 @@ export function Admin({ onBack }) {
         position: 'sticky', top: 0, background: 'rgba(13,13,13,.9)', backdropFilter: 'blur(12px)', zIndex: 50,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Avatar name="נטעלי" index={0} size={36} />
+          <Avatar name={name(profile)} index={0} size={36} />
           <div>
-            <div style={{ fontWeight: 900, fontSize: 17, lineHeight: 1.1 }}>שלום נטעלי 👋</div>
+            <div style={{ fontWeight: 900, fontSize: 17, lineHeight: 1.1 }}>שלום {name(profile).split(' ')[0]} 👋</div>
             <div style={{ color: '#888', fontSize: 12 }}>ניהול · היפ הופ נשים אפק</div>
           </div>
         </div>
-        <button
-          onClick={onBack}
-          style={{
-            width: 38, height: 38,
-            background: '#1a1a1a', border: `1px solid ${COLORS.borderAlt}`,
-            borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: '#888', fontSize: 15, flexShrink: 0,
-          }}
-          title="חזרה"
-        >
-          ←
-        </button>
+        <BackButton to="/" />
       </nav>
 
       {/* סטאטס */}
@@ -82,10 +81,12 @@ export function Admin({ onBack }) {
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px,1fr))', gap: 14,
       }}>
         <Stat label="תלמידות פעילות"      value={students.length} />
-        <Stat label="רשומות לראשון הקרוב" value={MOCK_SESSIONS[0]?.registeredIds.length ?? 0} accent />
+        <Stat label="רשומות לראשון הקרוב" value={nextSession?.participants.length ?? 0} accent />
         <Stat label='סה"כ כניסות במאגר'   value={students.reduce((a, s) => a + s.credits, 0)} />
         <Stat label="נגמרו להן כניסות"    value={students.filter(s => s.credits === 0).length} warn />
       </section>
+
+      {error && <div style={{ maxWidth: 1000, margin: '16px auto 0', padding: '0 28px', color: '#ff7a7a', fontSize: 13 }}>{error}</div>}
 
       {/* טאבים */}
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 28px 0', display: 'flex', gap: 8 }}>
@@ -96,9 +97,11 @@ export function Admin({ onBack }) {
       {/* שיעורים */}
       {tab === 'sessions' && (
         <section style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 28px 60px' }}>
-          {MOCK_SESSIONS.map((sess) => {
+          {sessions.length === 0 && <div style={{ color: '#666' }}>אין שיעורים. הוסיפי שיעורים בטבלת sessions ב-Supabase.</div>}
+          {sessions.map((sess) => {
             const open       = openSession === sess.id;
-            const presentIds = present[sess.id] ?? [];
+            const presentIds = sess.presentIds;
+            const regIds     = sess.participants.map(p => p.id);
             return (
               <div key={sess.id} style={{
                 border: open ? `1px solid rgba(232,255,0,0.3)` : `1px solid ${COLORS.border}`,
@@ -110,27 +113,27 @@ export function Admin({ onBack }) {
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', cursor: 'pointer', gap: 12 }}
                 >
                   <div>
-                    <div style={{ fontWeight: 900, fontSize: 18, color: COLORS.primary }}>{sess.label}</div>
+                    <div style={{ fontWeight: 900, fontSize: 18, color: COLORS.primary }}>{sessionLabel(sess.starts_at)} · {sessionTime(sess.starts_at)}</div>
                     <div style={{ color: '#888', fontSize: 13, marginTop: 2 }}>
-                      {sess.registeredIds.length} רשומות · {presentIds.length} הגיעו
+                      {regIds.length} רשומות · {presentIds.length} הגיעו
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ display: 'flex', flexDirection: 'row-reverse' }}>
-                      {sess.registeredIds.slice(0, 4).map((id, i) => {
+                      {regIds.slice(0, 4).map((id, i) => {
                         const st = byId(id);
                         return st ? (
                           <div key={id} style={{ marginInlineStart: i === 0 ? 0 : -8, border: `2px solid ${COLORS.card}`, borderRadius: '50%' }}>
-                            <Avatar name={st.name} index={i} size={28} border={COLORS.card} />
+                            <Avatar name={name(st)} index={i} size={28} border={COLORS.card} />
                           </div>
                         ) : null;
                       })}
-                      {sess.registeredIds.length > 4 && (
+                      {regIds.length > 4 && (
                         <div style={{
                           width: 28, height: 28, borderRadius: '50%', background: '#1a1f27', color: '#9bd',
                           fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
                           border: `2px solid ${COLORS.card}`, marginInlineStart: -8,
-                        }}>+{sess.registeredIds.length - 4}</div>
+                        }}>+{regIds.length - 4}</div>
                       )}
                     </div>
                     <span style={{ color: '#666', fontSize: 18 }}>{open ? '▲' : '▼'}</span>
@@ -139,9 +142,9 @@ export function Admin({ onBack }) {
 
                 {open && (
                   <div style={{ borderTop: `1px solid ${COLORS.border}`, padding: '8px 14px 18px' }}>
-                    {sess.registeredIds.length === 0
+                    {regIds.length === 0
                       ? <div style={{ color: '#666', fontSize: 14, padding: '16px 8px' }}>אף אחת עדיין לא נרשמה.</div>
-                      : sess.registeredIds.map((id) => {
+                      : regIds.map((id) => {
                           const st = byId(id);
                           if (!st) return null;
                           const isPresent = presentIds.includes(id);
@@ -151,15 +154,15 @@ export function Admin({ onBack }) {
                               padding: '12px 8px', borderBottom: `1px solid ${COLORS.border}`, gap: 10,
                             }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <Avatar name={st.name} index={Number(st.id)} />
+                                <Avatar name={name(st)} index={colorIndex(st.id)} />
                                 <div>
-                                  <div style={{ fontWeight: 700, fontSize: 15 }}>{st.name}</div>
-                                  <div style={{ color: '#777', fontSize: 12, direction: 'ltr', textAlign: 'right' }}>{st.phone}</div>
+                                  <div style={{ fontWeight: 700, fontSize: 15 }}>{name(st)}</div>
+                                  <div style={{ color: '#777', fontSize: 12, direction: 'ltr', textAlign: 'right' }}>{st.phone || st.email}</div>
                                 </div>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <span style={{ fontSize: 12, color: st.credits === 0 ? '#ff7a7a' : '#888' }}>{st.credits} כניסות</span>
-                                <Btn variant={isPresent ? 'primary' : 'outline'} size="sm" onClick={() => togglePresent(sess.id, id)}>
+                                <Btn variant={isPresent ? 'primary' : 'outline'} size="sm" disabled={busy === `att:${sess.id}:${id}`} onClick={() => togglePresent(sess.id, id, isPresent)}>
                                   {isPresent ? '✓ הגיעה' : 'סמני נוכחות'}
                                 </Btn>
                               </div>
@@ -187,10 +190,10 @@ export function Admin({ onBack }) {
                 background: st.credits === 0 ? 'rgba(255,77,77,0.05)' : 'transparent',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <Avatar name={st.name} index={Number(st.id)} size={38} />
+                  <Avatar name={name(st)} index={colorIndex(st.id)} size={38} />
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 16 }}>{st.name}</div>
-                    <div style={{ color: '#777', fontSize: 13, direction: 'ltr', textAlign: 'right' }}>{st.phone}</div>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>{name(st)}</div>
+                    <div style={{ color: '#777', fontSize: 13, direction: 'ltr', textAlign: 'right' }}>{st.phone || st.email}</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -199,8 +202,9 @@ export function Admin({ onBack }) {
                     <div style={{ fontSize: 11, color: '#777' }}>כניסות</div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
-                    <Btn variant="outline" size="sm" onClick={() => addCredits(st.id, -1)}>−</Btn>
-                    <Btn variant="primary" size="sm" onClick={() => addCredits(st.id, 4)}>+ חבילה (4)</Btn>
+                    <Btn variant="outline" size="sm" disabled={busy === `cr:${st.id}` || st.credits === 0} onClick={() => addCredits(st.id, -1)}>−</Btn>
+                    <Btn variant="outline" size="sm" disabled={busy === `cr:${st.id}`} onClick={() => addCredits(st.id, 1)}>+1</Btn>
+                    <Btn variant="primary" size="sm" disabled={busy === `cr:${st.id}`} onClick={() => addCredits(st.id, PACK_SIZE)}>+ חבילה ({PACK_SIZE})</Btn>
                   </div>
                 </div>
               </div>

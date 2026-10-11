@@ -118,3 +118,11 @@ src/
 3. **OTP Login** — עדכן `Login.jsx` עם Supabase Phone Auth
 4. **Admin screen** — חבר את כפתור ⚙ ל-`Admin.jsx`
 5. **Deploy** — `npm run build && vercel --prod`
+
+---
+
+## Backend setup (Supabase + Google sign-in)
+1. `cp .env.example .env.local` and fill in `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`.
+2. Run `supabase/migrations/0001_init.sql` (SQL editor or `supabase db push`), then optionally `supabase/seed.sql`.
+3. Enable the Google provider in Supabase Auth and add redirect URLs (`http://localhost:5173/**`, production URL).
+4. Make an admin: `update public.profiles set is_admin = true where email = '...';`
