@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Btn }         from '../components/Btn';
 import { AvatarStack } from '../components/Avatar';
 import { BackButton }  from '../components/BackButton';
-import { COLORS, PRICES, PAYBOX_URL, PACK_SIZE } from '../lib/constants';
+import { COLORS, PRICES, PAYMENT_LINKS, PACK_SIZE } from '../lib/constants';
 import { fetchUpcomingSessions, register, unregister, sessionLabel, sessionTime, isPast } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
@@ -58,22 +58,28 @@ function CreditsCard({ student }) {
         </Btn>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          <Btn
-            variant="primary"
-            size="md"
-            fullWidth
-            onClick={() => window.open(PAYBOX_URL, '_blank')}
-          >
-            כרטיסיית 4 כניסות — ₪{PRICES.pack4}
-          </Btn>
-          <Btn
-            variant="outline"
-            size="md"
-            fullWidth
-            onClick={() => window.open(PAYBOX_URL, '_blank')}
-          >
-            כניסה בודדת — ₪{PRICES.single}
-          </Btn>
+          {[
+            { key: 'pack4',  label: `כרטיסיית ${PACK_SIZE} כניסות`, variant: 'primary' },
+            { key: 'single', label: 'כניסה בודדת',                 variant: 'outline' },
+          ].map(({ key, label, variant }) => {
+            const url = PAYMENT_LINKS[key];
+            return (
+              <Btn
+                key={key}
+                variant={variant}
+                size="md"
+                fullWidth
+                disabled={!url}
+                style={url ? undefined : { opacity: 0.45, cursor: 'not-allowed' }}
+                onClick={() => url && window.open(url, '_blank', 'noopener,noreferrer')}
+              >
+                {label} — ₪{PRICES[key]}{url ? '' : ' (בקרוב)'}
+              </Btn>
+            );
+          })}
+          <div style={{ fontSize:12, color:COLORS.textMuted, textAlign:'center', lineHeight:1.5 }}>
+            אחרי התשלום בביט, נטלי מוסיפה את הכניסות ידנית — האישור תוך זמן קצר.
+          </div>
           <Btn
             variant="ghost"
             size="sm"

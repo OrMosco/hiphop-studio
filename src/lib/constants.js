@@ -19,7 +19,6 @@ export const COLORS = {
 };
 
 // ─── PayBox ───────────────────────────────────────────────────────────────────
-export const PAYBOX_URL = 'https://payboxapp.page.link/YOUR_ID'; // החלף ב-ID של נטעלי
 
 // ─── Fixed class ─────────────────────────────────────────────────────────────
 export const FIXED_CLASS = {
@@ -33,6 +32,13 @@ export const FIXED_CLASS = {
 export const PRICES = {
   single: 65,
   pack4:  210,
+};
+
+// ─── Payment links (product key → URL). null = not available yet ("בקרוב") ──
+// To add a product link, just fill in its URL here.
+export const PAYMENT_LINKS = {
+  single: 'https://www.bitpay.co.il/app/share-info?i=bm71OQNo&j=true', // Bit, ₪65
+  pack4:  null,
 };
 
 // ─── Avatar palette (cycles by index) ────────────────────────────────────────
