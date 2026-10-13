@@ -1,19 +1,16 @@
-import { useState }   from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Btn }         from '../components/Btn';
 import { AvatarStack } from '../components/Avatar';
-import { StatusBar }   from '../components/StatusBar';
-import {
-  COLORS,
-  FIXED_CLASS,
-  PRICES,
-  PAYBOX_URL,
-  MOCK_SESSIONS,
-  MOCK_STUDENTS,
-} from '../lib/constants';
+import { BackButton }  from '../components/BackButton';
+import { COLORS, PRICES, PAYMENT_LINKS, PACK_SIZE } from '../lib/constants';
+import { fetchUpcomingSessions, register, unregister, sessionLabel, sessionTime, isPast } from '../lib/api';
+import { useAuth } from '../lib/auth';
 
 function CreditsCard({ student }) {
-  const total = 4; // credits per pack
-  const used  = total - student.credits;
+  // Dots show progress through the current pack; a balance above one pack shows all dots full.
+  const credits = Math.max(0, student.credits ?? 0);
+  const total   = Math.max(PACK_SIZE, credits);
+  const filled  = credits;
   const [showOptions, setShowOptions] = useState(false);
 
   return (
@@ -45,7 +42,7 @@ function CreditsCard({ student }) {
         {Array.from({ length: total }).map((_, i) => (
           <div key={i} style={{
             width: 11, height: 11, borderRadius: '50%',
-            background: i < used ? COLORS.border : COLORS.primary,
+            background: i < total - filled ? COLORS.border : COLORS.primary,
           }} />
         ))}
       </div>
@@ -61,22 +58,28 @@ function CreditsCard({ student }) {
         </Btn>
       ) : (
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-          <Btn
-            variant="primary"
-            size="md"
-            fullWidth
-            onClick={() => window.open(PAYBOX_URL, '_blank')}
-          >
-            כרטיסיית 4 כניסות — ₪{PRICES.pack4}
-          </Btn>
-          <Btn
-            variant="outline"
-            size="md"
-            fullWidth
-            onClick={() => window.open(PAYBOX_URL, '_blank')}
-          >
-            כניסה בודדת — ₪{PRICES.single}
-          </Btn>
+          {[
+            { key: 'pack4',  label: `כרטיסיית ${PACK_SIZE} כניסות`, variant: 'primary' },
+            { key: 'single', label: 'כניסה בודדת',                 variant: 'outline' },
+          ].map(({ key, label, variant }) => {
+            const url = PAYMENT_LINKS[key];
+            return (
+              <Btn
+                key={key}
+                variant={variant}
+                size="md"
+                fullWidth
+                disabled={!url}
+                style={url ? undefined : { opacity: 0.45, cursor: 'not-allowed' }}
+                onClick={() => url && window.open(url, '_blank', 'noopener,noreferrer')}
+              >
+                {label} — ₪{PRICES[key]}{url ? '' : ' (בקרוב)'}
+              </Btn>
+            );
+          })}
+          <div style={{ fontSize:12, color:COLORS.textMuted, textAlign:'center', lineHeight:1.5 }}>
+            אחרי התשלום בביט, נטעלי מוסיפה את הכניסות ידנית — האישור תוך זמן קצר.
+          </div>
           <Btn
             variant="ghost"
             size="sm"
@@ -91,8 +94,9 @@ function CreditsCard({ student }) {
   );
 }
 
-function SessionCard({ session, isRegistered, onToggle }) {
-  const participants = MOCK_STUDENTS.filter(s => session.registeredIds.includes(s.id));
+function SessionCard({ session, isRegistered, onToggle, busy }) {
+  const participants = session.participants;
+  const locked = isPast(session.starts_at) || busy;
 
   return (
     <div style={{
@@ -107,7 +111,8 @@ function SessionCard({ session, isRegistered, onToggle }) {
         {/* Status pill / register button */}
         {isRegistered ? (
           <button
-            onClick={onToggle}
+            onClick={locked ? undefined : onToggle}
+            disabled={locked}
             title="לביטול ההרשמה"
             style={{
               display:'flex', alignItems:'center', gap:6,
@@ -123,47 +128,57 @@ function SessionCard({ session, isRegistered, onToggle }) {
             <span style={{ fontSize:11, fontWeight:700, color:COLORS.green }}>רשומה</span>
           </button>
         ) : (
-          <Btn variant="outline" size="sm" onClick={onToggle}>
+          <Btn variant="outline" size="sm" onClick={onToggle} disabled={locked}>
             הרשמה <span style={{ fontSize:14, lineHeight:1 }}>+</span>
           </Btn>
         )}
 
         {/* Date & time */}
         <div style={{ textAlign:'right' }}>
-          <div style={{ fontSize:14, fontWeight:600, color:'#bbb' }}>{session.label}</div>
+          <div style={{ fontSize:14, fontWeight:600, color:'#bbb' }}>{sessionLabel(session.starts_at)}</div>
           <div style={{
             fontSize:26, fontWeight:900, lineHeight:1.1, letterSpacing:'-0.5px',
             color: isRegistered ? COLORS.primary : '#888',
           }}>
-            {FIXED_CLASS.time}
+            {sessionTime(session.starts_at)}
           </div>
         </div>
       </div>
 
       {/* Participants row */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <span style={{ fontSize:12, color:'#555' }}>{session.registeredIds.length} נרשמו</span>
+        <span style={{ fontSize:12, color:'#555' }}>{participants.length} נרשמו</span>
         <AvatarStack students={participants} max={3} size={26} cardBg={COLORS.card} />
       </div>
     </div>
   );
 }
 
-export function Dashboard({ student, onBack }) {
-  const [registered, setRegistered] = useState(() => {
-    const initial = {};
-    MOCK_SESSIONS.forEach(s => {
-      initial[s.id] = s.registeredIds.includes(student.id);
-    });
-    return initial;
-  });
+export function Dashboard() {
+  const { user, profile: student, signOut } = useAuth();
+  const [sessions, setSessions] = useState(null);
+  const [busyId, setBusyId]     = useState(null);
+  const [error, setError]       = useState(null);
 
-  const toggle = (id) => setRegistered(r => ({ ...r, [id]: !r[id] }));
+  const load = useCallback(() =>
+    fetchUpcomingSessions({ limit: 6 })
+      .then(setSessions)
+      .catch(e => setError(e.message)), []);
+  useEffect(() => { load(); }, [load]);
+
+  const toggle = async (session, isRegistered) => {
+    setBusyId(session.id); setError(null);
+    try {
+      await (isRegistered ? unregister : register)(session.id, user.id);
+      await load();
+    } catch (e) { setError(e.message); }
+    finally { setBusyId(null); }
+  };
+
+  const name = student.full_name || 'תלמידה';
 
   return (
     <div className="fade-up">
-      <StatusBar />
-
       {/* ── Nav ── */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'18px 28px 22px' }}>
         {/* Avatar */}
@@ -173,32 +188,23 @@ export function Dashboard({ student, onBack }) {
           display:'flex', alignItems:'center', justifyContent:'center',
           fontSize:16, fontWeight:800, color:'#fff', flexShrink:0,
         }}>
-          {student.name[0]}
+          {name[0]}
         </div>
 
         <div style={{ fontSize:17, fontWeight:700, color:COLORS.textPrimary }}>לוח בקרה</div>
 
-        {/* Back */}
-        <button
-          onClick={onBack}
-          style={{
-            width:38, height:38,
-            background:'#1a1a1a', border:`1px solid ${COLORS.borderAlt}`,
-            borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center',
-            cursor:'pointer', color:'#888', fontSize:15, flexShrink:0,
-          }}
-          title="חזרה"
-        >
-          ←
-        </button>
+        <BackButton to="/" />
       </div>
 
       {/* ── Greeting ── */}
       <div style={{ padding:'0 28px 22px' }}>
         <div style={{ fontSize:28, fontWeight:800, color:COLORS.textPrimary, lineHeight:1.2 }}>
-          שלום, {student.name}
+          שלום, {name}
         </div>
-        <div style={{ fontSize:14, color:'#666', marginTop:6 }}>ברוכה הבאה לסטודיו</div>
+        <div style={{ fontSize:14, color:'#666', marginTop:6 }}>
+          ברוכה הבאה לסטודיו ·{' '}
+          <button onClick={signOut} style={{ background:'none', border:'none', color:'#888', textDecoration:'underline', cursor:'pointer', padding:0, fontSize:14 }}>התנתקות</button>
+        </div>
       </div>
 
       {/* ── Credits ── */}
@@ -211,14 +217,21 @@ export function Dashboard({ student, onBack }) {
         </div>
       </div>
 
-      {MOCK_SESSIONS.map(s => (
-        <SessionCard
-          key={s.id}
-          session={s}
-          isRegistered={!!registered[s.id]}
-          onToggle={() => toggle(s.id)}
-        />
-      ))}
+      {error && <div style={{ margin:'0 28px 12px', color:'#ff7a7a', fontSize:13, textAlign:'right' }}>{error}</div>}
+      {sessions === null && <div style={{ margin:'0 28px', color:'#666', textAlign:'right' }}>טוען…</div>}
+      {sessions?.length === 0 && <div style={{ margin:'0 28px', color:'#666', textAlign:'right' }}>אין שיעורים מתוכננים כרגע.</div>}
+      {sessions?.map(s => {
+        const isRegistered = s.participants.some(p => p.id === user.id);
+        return (
+          <SessionCard
+            key={s.id}
+            session={s}
+            isRegistered={isRegistered}
+            busy={busyId === s.id}
+            onToggle={() => toggle(s, isRegistered)}
+          />
+        );
+      })}
 
       <div style={{ height:44 }} />
     </div>
