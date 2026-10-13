@@ -191,7 +191,7 @@ export function Dashboard() {
           {name[0]}
         </div>
 
-        <div style={{ fontSize:17, fontWeight:700, color:COLORS.textPrimary }}>לוח בקרה</div>
+        <div style={{ fontSize:17, fontWeight:700, color:COLORS.textPrimary }}>הרשמה לשיעורים</div>
 
         <BackButton to="/" />
       </div>

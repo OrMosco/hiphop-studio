@@ -3,7 +3,7 @@ import { Avatar } from '../components/Avatar';
 import { Btn } from '../components/Btn';
 import { BackButton } from '../components/BackButton';
 import { COLORS, PACK_SIZE, colorIndex } from '../lib/constants';
-import { fetchAdminSessions, fetchStudents, adjustCredits, setAttendance, sessionLabel, sessionTime } from '../lib/api';
+import { fetchAdminSessions, fetchStudents, adjustCredits, setAttendance, fetchClassInfo, updateClassInfo, EMPTY_INFO, sessionLabel, sessionTime } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
 function Stat({ label, value, accent, warn }) {
@@ -92,7 +92,10 @@ export function Admin() {
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 28px 0', display: 'flex', gap: 8 }}>
         <Btn variant={tab === 'sessions' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('sessions')}>שיעורים והרשמות</Btn>
         <Btn variant={tab === 'students' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('students')}>כל התלמידות</Btn>
+        <Btn variant={tab === 'info' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('info')}>פרטי השיעור</Btn>
       </div>
+
+      {tab === 'info' && <ClassInfoEditor userId={profile?.id} />}
 
       {/* שיעורים */}
       {tab === 'sessions' && (
@@ -216,5 +219,47 @@ export function Admin() {
         </section>
       )}
     </div>
+  );
+}
+
+function ClassInfoEditor({ userId }) {
+  const [form, setForm]   = useState({ song_name: '', dance_style: '' });
+  const [state, setState] = useState('loading'); // loading | idle | saving | saved | error
+  const [err, setErr]     = useState(null);
+
+  useEffect(() => {
+    fetchClassInfo()
+      .then(d => { setForm({ song_name: d?.song_name ?? '', dance_style: d?.dance_style ?? '' }); setState('idle'); })
+      .catch(e => { setErr(e.message); setState('error'); });
+  }, []);
+
+  const save = async () => {
+    setState('saving'); setErr(null);
+    try { await updateClassInfo(form, userId); setState('saved'); }
+    catch (e) { setErr(e.message); setState('error'); }
+  };
+
+  const field = (key, label) => (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, color: '#888' }}>
+      {label}
+      <input
+        value={form[key]}
+        placeholder={EMPTY_INFO}
+        onChange={e => { setForm(f => ({ ...f, [key]: e.target.value })); setState('idle'); }}
+        style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '12px 14px', color: COLORS.textPrimary, fontSize: 15, fontFamily: 'inherit' }}
+      />
+    </label>
+  );
+
+  return (
+    <section style={{ maxWidth: 520, margin: '0 auto', padding: '24px 28px 60px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {field('song_name', 'שם השיר')}
+      {field('dance_style', 'סגנון הריקוד')}
+      <div style={{ fontSize: 12, color: '#666' }}>שדה ריק יוצג לתלמידות כ"{EMPTY_INFO}".</div>
+      <Btn variant="primary" size="md" disabled={state === 'loading' || state === 'saving'} onClick={save}>
+        {state === 'saving' ? 'שומרת…' : state === 'saved' ? 'נשמר ✓' : 'שמירה'}
+      </Btn>
+      {err && <div style={{ color: '#ff7a7a', fontSize: 13 }}>{err}</div>}
+    </section>
   );
 }

@@ -68,3 +68,16 @@ export const sessionLabel = (iso) =>
 export const sessionTime = (iso) =>
   new Intl.DateTimeFormat('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: TZ }).format(new Date(iso));
 export const isPast = (iso) => new Date(iso).getTime() < Date.now();
+
+// ─── Class info (single row: song name, dance style) ────────────────────────
+export async function fetchClassInfo() {
+  if (!supabase) return null;
+  return must(await supabase.from('class_info').select('song_name,dance_style').eq('id', true).maybeSingle());
+}
+export async function updateClassInfo({ song_name, dance_style }, userId) {
+  const clean = v => (v ?? '').trim() || null;
+  must(await supabase.from('class_info')
+    .update({ song_name: clean(song_name), dance_style: clean(dance_style), updated_at: new Date().toISOString(), updated_by: userId })
+    .eq('id', true));
+}
+export const EMPTY_INFO = 'אין כרגע';

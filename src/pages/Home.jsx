@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Btn }       from '../components/Btn';
 import { AvatarStack } from '../components/Avatar';
 import { COLORS, FIXED_CLASS, PRICES } from '../lib/constants';
-import { fetchUpcomingSessions, sessionLabel, sessionTime } from '../lib/api';
+import { fetchUpcomingSessions, fetchClassInfo, EMPTY_INFO, sessionLabel, sessionTime } from '../lib/api';
 import { useAuth } from '../lib/auth';
 
 export function Home() {
@@ -11,6 +11,7 @@ export function Home() {
   const { user, isAdmin } = useAuth();
   const [showDetails, setShowDetails] = useState(false);
   const [nextSession, setNext] = useState(undefined); // undefined = loading, null = none
+  const [info, setInfo] = useState(null);
 
   useEffect(() => {
     // next session = first one that hasn't started yet
@@ -18,6 +19,10 @@ export function Home() {
       .then(list => setNext(list.find(s => new Date(s.starts_at) > new Date()) ?? null))
       .catch(err => { console.error(err); setNext(null); });
   }, []);
+
+  useEffect(() => {
+    if (showDetails) fetchClassInfo().then(setInfo).catch(err => console.error(err));
+  }, [showDetails]);
 
   const participants = nextSession?.participants ?? [];
   const onEnter = () => navigate(user ? '/dashboard' : '/login');
@@ -105,12 +110,32 @@ export function Home() {
       {/* ── CTA Buttons ── */}
       <div style={{ padding:'0 20px', display:'flex', flexDirection:'column', gap:11 }}>
         <Btn variant="primary" size="lg" fullWidth onClick={onEnter}>
-          {user ? 'לוח הבקרה שלי' : 'כניסת תלמידות'}
+          {user ? 'הרשמה לשיעורים' : 'כניסת תלמידות'}
         </Btn>
         <Btn variant="secondary" size="md" fullWidth onClick={() => setShowDetails(d => !d)}>
           {showDetails ? 'סגור פרטים ↑' : 'פרטים על השיעור'}
         </Btn>
       </div>
+
+      {/* ── Class details (toggled) ── */}
+      {showDetails && (
+        <div className="fade-up" style={{
+          margin:'16px 20px 0',
+          background: COLORS.card,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 16,
+          padding:'14px 20px',
+          textAlign:'right',
+          display:'flex', flexDirection:'column', gap:8,
+        }}>
+          {[['שם השיר', info?.song_name], ['סגנון הריקוד', info?.dance_style]].map(([label, val]) => (
+            <div key={label} style={{ display:'flex', justifyContent:'space-between', gap:12, fontSize:14 }}>
+              <span style={{ color:'#666' }}>{label}</span>
+              <span style={{ color: val ? COLORS.textPrimary : COLORS.textMuted, fontWeight:600 }}>{val || EMPTY_INFO}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Price card (toggled) ── */}
       {showDetails && (
