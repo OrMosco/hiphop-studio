@@ -78,7 +78,7 @@ function CreditsCard({ student }) {
             );
           })}
           <div style={{ fontSize:12, color:COLORS.textMuted, textAlign:'center', lineHeight:1.5 }}>
-            אחרי התשלום בביט, נטלי מוסיפה את הכניסות ידנית — האישור תוך זמן קצר.
+            אחרי התשלום בביט, נטעלי מוסיפה את הכניסות ידנית — האישור תוך זמן קצר.
           </div>
           <Btn
             variant="ghost"
