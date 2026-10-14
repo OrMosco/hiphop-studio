@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Avatar } from '../components/Avatar';
+import { StudentRow } from '../components/StudentRow';
 import { Btn } from '../components/Btn';
 import { BackButton } from '../components/BackButton';
 import { COLORS, PACK_SIZE, colorIndex } from '../lib/constants';
@@ -183,34 +184,17 @@ export function Admin() {
 
       {/* תלמידות */}
       {tab === 'students' && (
-        <section style={{ maxWidth: 1000, margin: '0 auto', padding: '24px 28px 60px' }}>
+        <section style={{ maxWidth: 1000, margin: '0 auto', padding: '24px clamp(12px, 4vw, 28px) 60px' }}>
           <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, overflow: 'hidden' }}>
             {students.map((st, i) => (
-              <div key={st.id} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '16px 20px', gap: 10,
-                borderBottom: i < students.length - 1 ? `1px solid ${COLORS.border}` : 'none',
-                background: st.credits === 0 ? 'rgba(255,77,77,0.05)' : 'transparent',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <Avatar name={name(st)} index={colorIndex(st.id)} size={38} />
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 16 }}>{name(st)}</div>
-                    <div style={{ color: '#777', fontSize: 13, direction: 'ltr', textAlign: 'right' }}>{st.phone || st.email}</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ textAlign: 'center', minWidth: 60 }}>
-                    <div style={{ fontWeight: 900, fontSize: 24, color: st.credits === 0 ? '#ff7a7a' : '#fff' }}>{st.credits}</div>
-                    <div style={{ fontSize: 11, color: '#777' }}>כניסות</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <Btn variant="outline" size="sm" disabled={busy === `cr:${st.id}` || st.credits === 0} onClick={() => addCredits(st.id, -1)}>−</Btn>
-                    <Btn variant="outline" size="sm" disabled={busy === `cr:${st.id}`} onClick={() => addCredits(st.id, 1)}>+1</Btn>
-                    <Btn variant="primary" size="sm" disabled={busy === `cr:${st.id}`} onClick={() => addCredits(st.id, PACK_SIZE)}>+ חבילה ({PACK_SIZE})</Btn>
-                  </div>
-                </div>
-              </div>
+              <StudentRow
+                key={st.id}
+                student={st}
+                name={name(st)}
+                last={i === students.length - 1}
+                busy={busy === `cr:${st.id}`}
+                onAdjust={(n) => addCredits(st.id, n)}
+              />
             ))}
           </div>
           <p style={{ color: '#666', fontSize: 13, marginTop: 16, lineHeight: 1.6 }}>
